@@ -5,20 +5,27 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "vapid": "web-push generate-vapid-keys"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource/big-shoulders-display": "^5.3.0",
     "@upstash/redis": "^1.40.0",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "next": "^16.4.3",
+    "pino": "10.4.0",
+    "qrcode": "1.5.4",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/web-push": "^3.6.4",
     "typescript": "^7.0.2"
   }
 }

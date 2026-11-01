@@ -1263,7 +1263,7 @@ select.input {
   background: var(--red);
 }
 .adm-main {
-  padding: 34px 0 100px;
+  padding: 34px var(--gutter) 100px;
 }
 .adm h2.display {
   margin: 0 0 6px;
@@ -1990,4 +1990,153 @@ select.input {
 /* con el visor abierto, el botón fijo de reservar no tiene que verse detrás */
 body:has(dialog.lb[open]) .sticky-cta {
   display: none;
+}
+
+/* Panel · pestaña App */
+.how {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.how b {
+  color: var(--ink);
+}
+
+/* ---------- Tarjeta de fidelización ---------- */
+.lcard {
+  position: relative;
+  background: linear-gradient(160deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 22px 20px;
+  max-width: 460px;
+  overflow: hidden;
+}
+.lcard::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--red);
+}
+.lcard-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+.lcard-count {
+  font-family: var(--display);
+  font-size: 30px;
+  letter-spacing: 0.02em;
+}
+.lcard-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), 1fr);
+  gap: 10px;
+}
+.lcard-grid li {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px dashed var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: var(--dim);
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.lcard-grid li.on {
+  background: var(--red);
+  border: 1.5px solid var(--red-hi);
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+  animation: stampIn 0.45s var(--ease) both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+.lcard-grid li.on span::after {
+  content: "✓";
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+@keyframes stampIn {
+  from {
+    transform: scale(0.6) rotate(-12deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.lcard-foot {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.lcard-foot b {
+  color: var(--ink);
+}
+.lcard-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+.loyal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  gap: clamp(28px, 6vw, 80px);
+  align-items: center;
+}
+.loyal .btn {
+  margin-top: 8px;
+}
+@media (max-width: 800px) {
+  .loyal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.lookup-wrap {
+  max-width: 520px;
+  padding-bottom: 80px;
+}
+.lookup-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+.lookup .error,
+.lookup .hint {
+  margin: 0 0 16px;
+}
+.lcard-how {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.lcard-how summary {
+  cursor: pointer;
+  color: var(--ink);
+}
+.optin {
+  margin-top: 18px;
+  align-items: flex-start;
+  line-height: 1.45;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+.optin input {
+  margin-top: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lcard-grid li.on {
+    animation: none;
+  }
 }

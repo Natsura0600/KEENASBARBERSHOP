@@ -157,4 +157,12 @@ export const keys = {
   lock: (date: string, time: string) => `kb:lock:${date}:${time}`,
   cash: (month: string) => `kb:caja:${month}`,
   rate: (name: string, ip: string) => `kb:rate:${name}:${ip}`,
+  loyalty: "kb:fidelidad",
+  clients: "kb:clientes",
+  rewards: "kb:premios",
+  push: "kb:push",
+  waCreds: "kb:wa:creds",
+  waKeys: "kb:wa:keys",
+  waLock: "kb:wa:lock",
+  waState: "kb:wa:state",
 };

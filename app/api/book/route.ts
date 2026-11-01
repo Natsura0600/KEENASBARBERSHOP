@@ -5,8 +5,11 @@ import {
   getConfig,
   getServices,
 } from "@/lib/data";
-import { addDays, isValidDate, isValidTime, nowAR } from "@/lib/dates";
+import { addDays, formatDateEs, isValidDate, isValidTime, nowAR } from "@/lib/dates";
 import { allow, body, guard, json, str } from "@/lib/http";
+import { ensureClient, getLoyalty, setOptIn } from "@/lib/loyalty";
+import { normalizePhone } from "@/lib/phone";
+import { notifyAdmins } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +43,31 @@ export const POST = guard(async (req) => {
   }
 
   const appt = await createAppointment({ config, service, date, time, name, phone, source: "web" });
+
+  // Tarjeta de fidelización: alta del cliente y consentimiento. Si algo falla acá, la reserva igual queda hecha.
+  let card: { stamps: number; required: number; rewardName: string } | undefined;
+  try {
+    const loyalty = await getLoyalty();
+    const canonical = normalizePhone(phone);
+    if (loyalty.enabled && canonical) {
+      const client = await ensureClient(canonical, name);
+      const accepted = b.optIn === true ? await setOptIn(canonical, name, true, "web") : client;
+      card = { stamps: accepted.stamps, required: loyalty.cutsRequired, rewardName: loyalty.rewardName };
+    }
+  } catch (e) {
+    console.error("fidelización (reserva)", e);
+  }
+
+  // Aviso al celular del dueño (no bloquea ni rompe la reserva si falla).
+  await notifyAdmins({
+    title: "Turno nuevo",
+    body: `${appt.name} · ${appt.serviceName} · ${formatDateEs(appt.date)} ${appt.time} hs`,
+    tag: `turno-${appt.id}`,
+  });
+
   return json({
     ok: true,
+    card,
     appointment: {
       id: appt.id,
       date: appt.date,

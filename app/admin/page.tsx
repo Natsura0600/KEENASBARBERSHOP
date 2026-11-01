@@ -6,7 +6,13 @@ import { getConfig } from "@/lib/data";
 import { nowAR } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Panel", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Panel",
+  robots: { index: false, follow: false },
+  manifest: "/admin.webmanifest",
+  icons: { apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Keena's Panel", statusBarStyle: "black" },
+};
 
 export default async function AdminPage() {
   if (!(await isAdmin())) return <Login />;

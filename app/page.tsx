@@ -1,7 +1,9 @@
 import Link from "next/link";
+import LoyaltyCard from "@/components/LoyaltyCard";
 import RevealObserver from "@/components/RevealObserver";
 import SiteNav from "@/components/SiteNav";
 import Works from "@/components/Works";
+import { getLoyalty } from "@/lib/loyalty";
 import { WORKS } from "@/lib/works";
 import { getConfig, getNotices, getServices } from "@/lib/data";
 import { DAYS_ES, nowAR } from "@/lib/dates";
@@ -18,7 +20,7 @@ const REVIEWS = [
 const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default async function Home() {
-  const [config, allServices, notices] = await Promise.all([getConfig(), getServices(), getNotices(true)]);
+  const [config, allServices, notices, loyalty] = await Promise.all([getConfig(), getServices(), getNotices(true), getLoyalty()]);
   const services = allServices.filter((s) => s.active);
   const now = nowAR();
   const status = openStatus(config, now);
@@ -162,6 +164,28 @@ export default async function Home() {
         <section id="trabajos" className="works-sec">
           <Works works={WORKS} />
         </section>
+
+        {/* ---------------- FIDELIZACIÓN ---------------- */}
+        {loyalty.enabled && (
+          <section id="fidelizacion">
+            <div className="wrap loyal">
+              <div className="reveal">
+                <span className="eyebrow">Para los que vuelven</span>
+                <h2 className="display">Cada corte suma</h2>
+                <p>
+                  Con cada corte te llevás un sello. Al llegar a {loyalty.cutsRequired} ganás <b>{loyalty.rewardName}</b>
+                  {loyalty.validDays > 0 ? ` (válido por ${loyalty.validDays} días)` : ""}. No tenés que bajar nada: tu tarjeta queda guardada con tu teléfono.
+                </p>
+                <Link className="btn ghost" href="/tarjeta">
+                  Ver mi tarjeta
+                </Link>
+              </div>
+              <div className="reveal" style={{ ["--d" as string]: "0.1s" }}>
+                <LoyaltyCard stamps={Math.ceil(loyalty.cutsRequired / 2)} required={loyalty.cutsRequired} rewardName={loyalty.rewardName} note="Ejemplo de cómo se ve." />
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ---------------- CÓMO RESERVAR ---------------- */}
         <section id="como">

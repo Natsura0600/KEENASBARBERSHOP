@@ -3,6 +3,7 @@ import BookingForm from "@/components/BookingForm";
 import SiteNav from "@/components/SiteNav";
 import { getConfig, getServices } from "@/lib/data";
 import { nowAR } from "@/lib/dates";
+import { getLoyalty } from "@/lib/loyalty";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Reservar turno" };
@@ -12,7 +13,7 @@ export default async function TurnosPage({
 }: {
   searchParams: Promise<{ servicio?: string }>;
 }) {
-  const [{ servicio }, config, services] = await Promise.all([searchParams, getConfig(), getServices()]);
+  const [{ servicio }, config, services, loyalty] = await Promise.all([searchParams, getConfig(), getServices(), getLoyalty()]);
   const active = services.filter((s) => s.active);
 
   return (
@@ -25,6 +26,7 @@ export default async function TurnosPage({
           maxDaysAhead={config.maxDaysAhead}
           today={nowAR().date}
           initialServiceId={active.find((s) => s.id === servicio)?.id}
+          loyalty={loyalty.enabled ? { cutsRequired: loyalty.cutsRequired, rewardName: loyalty.rewardName } : undefined}
           shop={{
             name: config.name,
             address: `${config.address}, ${config.city}`,

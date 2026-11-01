@@ -6,7 +6,22 @@ import { ars } from "@/lib/format";
 import type { Appointment, PayMethod, Service } from "@/lib/types";
 import { api, waNumber } from "./api";
 
-type DayData = { date: string; appointments: Appointment[]; free: Record<string, string[]> };
+type Card = { stamps: number; optIn: boolean; rewards: { code: string; reward: string; expiresOn?: string }[] };
+type DayData = {
+  date: string;
+  appointments: Appointment[];
+  free: Record<string, string[]>;
+  loyalty?: { enabled: boolean; required: number };
+  cards?: Record<string, Card>;
+};
+type Awarded = { code: string; reward: string; sent: "whatsapp" | "simulated" | "error" | "no" };
+
+const SENT_TEXT: Record<Awarded["sent"], string> = {
+  whatsapp: "se avisó por WhatsApp",
+  simulated: "aviso simulado (modo prueba)",
+  error: "falló el aviso: usá “Avisar por WhatsApp” en Fidelización",
+  no: "avisalo desde Fidelización",
+};
 
 const LABEL: Record<Appointment["status"], string> = {
   reserved: "Reservado",
@@ -25,6 +40,8 @@ export default function AgendaTab({ today }: { today: string }) {
   const [amount, setAmount] = useState("");
   const [form, setForm] = useState({ serviceId: "", time: "", name: "", phone: "" });
   const [busy, setBusy] = useState(false);
+  const [redeem, setRedeem] = useState("");
+  const [toast, setToast] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -52,8 +69,13 @@ export default function AgendaTab({ today }: { today: string }) {
   async function setStatus(a: Appointment, status: Appointment["status"], extra: object = {}) {
     setBusy(true);
     try {
-      await api("/api/admin/turnos", { method: "PATCH", json: { date: a.date, id: a.id, status, ...extra } });
+      const res = await api<{ awarded?: Awarded[] }>("/api/admin/turnos", { method: "PATCH", json: { date: a.date, id: a.id, status, ...extra } });
       setPaying(null);
+      setToast(
+        res.awarded?.length
+          ? res.awarded.map((r) => `🎉 ${a.name} completó la tarjeta y ganó ${r.reward} (código ${r.code}): ${SENT_TEXT[r.sent]}.`).join(" ")
+          : "",
+      );
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -108,6 +130,11 @@ export default function AgendaTab({ today }: { today: string }) {
           {error}
         </p>
       )}
+      {toast && (
+        <p className="pos" role="status" style={{ marginBottom: 14 }}>
+          {toast}
+        </p>
+      )}
 
       <div className="two">
         <div className="card">
@@ -126,6 +153,16 @@ export default function AgendaTab({ today }: { today: string }) {
                     {a.serviceName} · {ars(a.price)}
                     {a.source === "admin" ? " · cargado a mano" : ""}
                   </small>
+                  {data.loyalty?.enabled && data.cards?.[a.id] && (
+                    <small>
+                      Tarjeta: {data.cards[a.id].stamps}/{data.loyalty.required}
+                      {data.cards[a.id].rewards.length > 0 && (
+                        <b style={{ color: "var(--red-hi)" }}> · tiene {data.cards[a.id].rewards.length} premio{data.cards[a.id].rewards.length > 1 ? "s" : ""} para canjear</b>
+                      )}
+                    </small>
+                  )}
+                  {data.loyalty?.enabled && !data.cards?.[a.id] && a.status !== "cancelled" && <small>Sin teléfono: no suma sellos</small>}
+                  {a.loyalty?.redeemed && <small>Premio canjeado: {a.loyalty.redeemed}</small>}
                   {a.phone && (
                     <small>
                       <a href={`tel:${a.phone}`}>{a.phone}</a> ·{" "}
@@ -144,6 +181,7 @@ export default function AgendaTab({ today }: { today: string }) {
                           setPaying(a.id);
                           setAmount(String(a.price));
                           setMethod("efectivo");
+                          setRedeem("");
                         }}
                       >
                         Cobrar
@@ -169,8 +207,30 @@ export default function AgendaTab({ today }: { today: string }) {
                       <option value="transferencia">Transferencia</option>
                       <option value="otro">Otro</option>
                     </select>
+                    {(data.cards?.[a.id]?.rewards.length ?? 0) > 0 && (
+                      <select
+                        className="input"
+                        value={redeem}
+                        aria-label="Canjear premio"
+                        onChange={(e) => {
+                          setRedeem(e.target.value);
+                          setAmount(e.target.value ? "0" : String(a.price));
+                        }}
+                      >
+                        <option value="">Sin premio</option>
+                        {data.cards![a.id].rewards.map((r) => (
+                          <option key={r.code} value={r.code}>
+                            Canjear {r.reward} ({r.code})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <input className="input" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} aria-label="Monto cobrado" />
-                    <button className="btn sm" disabled={busy || !amount} onClick={() => setStatus(a, "done", { method, amount: Number(amount) })}>
+                    <button
+                      className="btn sm"
+                      disabled={busy || (!amount && !redeem)}
+                      onClick={() => setStatus(a, "done", { method, amount: Number(amount || 0), ...(redeem ? { redeemCode: redeem } : {}) })}
+                    >
                       Confirmar cobro
                     </button>
                     <button className="btn ghost sm" onClick={() => setPaying(null)}>

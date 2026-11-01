@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import AgendaTab from "./AgendaTab";
+import AppTab from "./AppTab";
 import AvisosTab from "./AvisosTab";
 import CajaTab from "./CajaTab";
+import FidelidadTab from "./FidelidadTab";
 import LocalTab from "./LocalTab";
 import ServiciosTab from "./ServiciosTab";
 import { api } from "./api";
@@ -13,8 +15,10 @@ const TABS = [
   ["agenda", "Agenda"],
   ["caja", "Caja"],
   ["servicios", "Servicios"],
+  ["fidelidad", "Fidelización"],
   ["avisos", "Avisos"],
   ["local", "Local"],
+  ["app", "App"],
 ] as const;
 
 type Tab = (typeof TABS)[number][0];
@@ -57,8 +61,10 @@ export default function Dashboard({ today, shopName }: { today: string; shopName
         {tab === "agenda" && <AgendaTab today={today} />}
         {tab === "caja" && <CajaTab today={today} />}
         {tab === "servicios" && <ServiciosTab />}
+        {tab === "fidelidad" && <FidelidadTab />}
         {tab === "avisos" && <AvisosTab />}
         {tab === "local" && <LocalTab />}
+        {tab === "app" && <AppTab />}
       </main>
     </div>
   );

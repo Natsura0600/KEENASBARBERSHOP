@@ -12,17 +12,36 @@ import {
 import { getStore, keys } from "@/lib/db";
 import { isValidDate, isValidTime, nowAR } from "@/lib/dates";
 import { body, guard, json, money, str } from "@/lib/http";
+import {
+  addStampsFor,
+  effectiveStatus,
+  getLoyalty,
+  listClients,
+  listRewards,
+  redeemFor,
+  revertLoyalty,
+  type Awarded,
+} from "@/lib/loyalty";
+import { normalizePhone } from "@/lib/phone";
 import type { Appointment, AppointmentStatus, PayMethod } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // el aviso por WhatsApp puede tardar unos segundos
+
+export type AgendaCard = {
+  stamps: number;
+  optIn: boolean;
+  rewards: { code: string; reward: string; expiresOn?: string }[];
+};
 
 export const GET = guard(async (req) => {
   const date = new URL(req.url).searchParams.get("date") ?? nowAR().date;
   if (!isValidDate(date)) return json({ error: "Fecha inválida" }, 400);
-  const [config, services, appointments] = await Promise.all([
+  const [config, services, appointments, loyalty] = await Promise.all([
     getConfig(),
     getServices(),
     appointmentsOf(date),
+    getLoyalty(),
   ]);
   // Horarios libres por servicio, para cargar turnos a mano.
   const free: Record<string, string[]> = {};
@@ -30,7 +49,33 @@ export const GET = guard(async (req) => {
     const av = await availability(config, s, date, true);
     free[s.id] = av.slots.filter((x) => x.free).map((x) => x.time);
   }
-  return json({ date, appointments, free });
+
+  // Estado de la tarjeta de cada cliente que tiene turno ese día.
+  const cards: Record<string, AgendaCard> = {};
+  if (loyalty.enabled) {
+    const [clients, rewards] = await Promise.all([listClients(), listRewards()]);
+    const byPhone = new Map(clients.map((c) => [c.phone, c]));
+    const today = nowAR().date;
+    for (const a of appointments) {
+      const phone = normalizePhone(a.phone);
+      if (!phone) continue;
+      const c = byPhone.get(phone);
+      cards[a.id] = {
+        stamps: c?.stamps ?? 0,
+        optIn: c?.optIn ?? false,
+        rewards: rewards
+          .filter((r) => r.phone === phone && effectiveStatus(r, today) === "pending")
+          .map((r) => ({ code: r.code, reward: r.reward, expiresOn: r.expiresOn })),
+      };
+    }
+  }
+  return json({
+    date,
+    appointments,
+    free,
+    loyalty: { enabled: loyalty.enabled, required: loyalty.cutsRequired },
+    cards,
+  });
 }, { admin: true });
 
 // Cargar un turno a mano (cliente que escribió por WhatsApp, por ejemplo)
@@ -69,8 +114,10 @@ export const PATCH = guard(async (req) => {
 
   const next = status as AppointmentStatus;
   const cashId = `c_${appt.id}`;
+  const wasDone = appt.status === "done";
+  const wasCancelled = appt.status === "cancelled";
 
-  if (appt.status === "cancelled" && next !== "cancelled") {
+  if (wasCancelled && next !== "cancelled") {
     // Reactivar un turno cancelado: hay que volver a tomar los horarios.
     const got: string[] = [];
     for (const t of appt.slots) {
@@ -83,11 +130,38 @@ export const PATCH = guard(async (req) => {
     }
   }
 
+  // ---- Tarjeta de fidelización ----
+  let loyaltyPatch: Appointment["loyalty"] = appt.loyalty;
+  let awarded: Awarded[] = [];
+  try {
+    if (wasDone && next !== "done") {
+      await revertLoyalty(appt);
+      loyaltyPatch = undefined;
+    }
+    if (!wasDone && next === "done") {
+      const code = str(b.redeemCode, 20).toUpperCase();
+      if (code) {
+        const r = await redeemFor(code, appt);
+        loyaltyPatch = { stamps: 0, rewards: [], redeemed: r.code };
+      } else {
+        const res = await addStampsFor(appt, (await getConfig()).name);
+        loyaltyPatch = res.loyalty;
+        awarded = res.awarded;
+      }
+    }
+  } catch (e) {
+    if (wasCancelled && next !== "cancelled") await releaseSlots(appt);
+    throw e;
+  }
+
+  // ---- Caja ----
   if (next === "cancelled") {
     await releaseSlots(appt);
     await deleteCashEntry(appt.date, cashId);
   } else if (next === "done") {
-    const amount = money(b.amount) ?? appt.price;
+    const redeemed = Boolean(loyaltyPatch?.redeemed);
+    // Un premio canjeado se cobra $0 salvo que el dueño indique otro monto (ej. descuento parcial).
+    const amount = money(b.amount) ?? (redeemed ? 0 : appt.price);
     const method = METHODS.includes(b.method as PayMethod) ? (b.method as PayMethod) : "efectivo";
     await saveCashEntry({
       id: cashId,
@@ -95,7 +169,7 @@ export const PATCH = guard(async (req) => {
       type: "ingreso",
       amount,
       method,
-      concept: appt.serviceName,
+      concept: redeemed ? `${appt.serviceName} (premio ${loyaltyPatch!.redeemed})` : appt.serviceName,
       appointmentId: appt.id,
     });
   } else {
@@ -103,6 +177,8 @@ export const PATCH = guard(async (req) => {
   }
 
   const updated: Appointment = { ...appt, status: next };
+  if (loyaltyPatch) updated.loyalty = loyaltyPatch;
+  else delete updated.loyalty;
   await db.hset(keys.day(date), id, updated);
-  return json({ ok: true, appointment: updated });
+  return json({ ok: true, appointment: updated, awarded });
 }, { admin: true });

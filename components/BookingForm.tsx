@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DAYS_SHORT, MONTHS_ES, addDays, dow, formatDateEs, listDays } from "@/lib/dates";
 import { ars } from "@/lib/format";
+import LoyaltyCard from "./LoyaltyCard";
 import type { DayHours, Service } from "@/lib/types";
 
 type Props = {
@@ -12,7 +13,10 @@ type Props = {
   today: string;
   initialServiceId?: string;
   shop: { name: string; address: string; whatsapp: string; conditions: string };
+  loyalty?: { cutsRequired: number; rewardName: string };
 };
+
+type Card = { stamps: number; required: number; rewardName: string };
 
 type Slot = { time: string; free: boolean };
 type Done = { date: string; time: string; serviceName: string; price: number; name: string };
@@ -41,7 +45,7 @@ function icsFor(done: Done, durationMin: number, shop: Props["shop"]) {
   return `data:text/calendar;charset=utf-8,${encodeURIComponent(text)}`;
 }
 
-export default function BookingForm({ services, hours, maxDaysAhead, today, initialServiceId, shop }: Props) {
+export default function BookingForm({ services, hours, maxDaysAhead, today, initialServiceId, shop, loyalty }: Props) {
   const [serviceId, setServiceId] = useState<string | undefined>(initialServiceId);
   const [date, setDate] = useState<string | undefined>();
   const [time, setTime] = useState<string | undefined>();
@@ -52,6 +56,8 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
+  const [card, setCard] = useState<Card | null>(null);
+  const [optIn, setOptIn] = useState(false);
   const reqId = useRef(0);
 
   const service = services.find((s) => s.id === serviceId);
@@ -98,7 +104,7 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
       const res = await fetch("/api/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceId, date, time, name, phone }),
+        body: JSON.stringify({ serviceId, date, time, name, phone, optIn: loyalty ? optIn : false }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -114,6 +120,7 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
         return;
       }
       setDone(data.appointment);
+      setCard(data.card ?? null);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
       setError("Sin conexión. Revisá tu internet y probá de nuevo.");
@@ -153,6 +160,11 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
               <div style={{ marginTop: 8, fontWeight: 600 }}>{shop.address}</div>
             </div>
           </div>
+          {card && (
+            <div style={{ marginTop: 26 }}>
+              <LoyaltyCard stamps={card.stamps} required={card.required} rewardName={card.rewardName} note="El sello se carga cuando se cobra tu turno." />
+            </div>
+          )}
           <p className="hint" style={{ marginTop: 22 }}>
             {shop.conditions}
           </p>
@@ -301,6 +313,14 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
                 />
               </div>
             </div>
+            {loyalty && (
+              <label className="check optin">
+                <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} />
+                <span>
+                  Quiero sumar sellos en la tarjeta de fidelización ({loyalty.cutsRequired} cortes = {loyalty.rewardName}) y recibir avisos por WhatsApp sobre mi premio. Puedo pedir que dejen de escribirme cuando quiera.
+                </span>
+              </label>
+            )}
           </div>
         </div>
 

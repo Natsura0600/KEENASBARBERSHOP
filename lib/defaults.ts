@@ -1,4 +1,4 @@
-import type { Config, Notice, Service } from "./types";
+import type { Config, LoyaltyConfig, Notice, Service } from "./types";
 
 // Datos iniciales tomados del perfil público de Keena's Barbería (San Martín 984, Luján).
 // Todo se puede cambiar después desde /admin; esto solo se usa mientras la base está vacía.
@@ -83,3 +83,20 @@ export const DEFAULT_NOTICES: Notice[] = [
     active: true,
   },
 ];
+
+export const DEFAULT_LOYALTY: LoyaltyConfig = {
+  enabled: false,
+  cutsRequired: 10,
+  rewardName: "1 corte gratis",
+  validDays: 60,
+  stamps: {},
+  channel: "baileys",
+  autoSend: true,
+  template: {
+    name: "premio_fidelizacion",
+    language: "es_AR",
+    vars: ["nombre", "premio", "codigo", "vencimiento"],
+  },
+  manualMessage:
+    "Hola {nombre}! Completaste tu tarjeta de {negocio} y ganaste: {premio}. Tu código es {codigo}. Vencimiento: {vencimiento}. Mostralo en tu próximo turno.",
+};
