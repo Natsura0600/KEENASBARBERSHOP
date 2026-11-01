@@ -266,7 +266,7 @@ export default async function Home() {
                 </figure>
               ))}
             </div>
-            <p className="review-note">Opiniones de clientes publicadas en el perfil de AgendaPro (5 de 5, 19 reseñas).</p>
+            <p className="review-note">Estas son las opiniones de algunos de nuestros clientes :)</p>
           </div>
         </section>
 
