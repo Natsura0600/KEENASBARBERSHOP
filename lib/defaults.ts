@@ -15,6 +15,7 @@ export const DEFAULT_CONFIG: Config = {
   lng: -59.1081735,
   whatsapp: "5491151353287",
   instagram: "",
+  breaks: [],
   slotMinutes: 40,
   maxDaysAhead: 21,
   conditions:

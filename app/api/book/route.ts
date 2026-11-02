@@ -7,7 +7,7 @@ import {
 } from "@/lib/data";
 import { addDays, formatDateEs, isValidDate, isValidTime, nowAR } from "@/lib/dates";
 import { allow, body, guard, json, str } from "@/lib/http";
-import { ensureClient, getLoyalty, setOptIn } from "@/lib/loyalty";
+import { ensureClient } from "@/lib/loyalty";
 import { normalizePhone } from "@/lib/phone";
 import { notifyAdmins } from "@/lib/push";
 import { getSite } from "@/lib/site";
@@ -53,8 +53,7 @@ export const POST = guard(async (req) => {
     const canonical = normalizePhone(phone);
     if (loyalty.enabled && canonical) {
       const client = await ensureClient(canonical, name);
-      const accepted = b.optIn === true ? await setOptIn(canonical, name, true, "web") : client;
-      card = { stamps: accepted.stamps, required: loyalty.cutsRequired, rewardName: loyalty.rewardName, milestones: loyalty.milestones };
+      card = { stamps: client.stamps, required: loyalty.cutsRequired, rewardName: loyalty.rewardName, milestones: loyalty.milestones };
     }
   } catch (e) {
     console.error("fidelización (reserva)", e);

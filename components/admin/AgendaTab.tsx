@@ -6,7 +6,7 @@ import { ars } from "@/lib/format";
 import type { Appointment, PayMethod, Service } from "@/lib/types";
 import { api, waNumber } from "./api";
 
-type Card = { stamps: number; optIn: boolean; rewards: { code: string; reward: string; percent?: number; expiresOn?: string }[] };
+type Card = { stamps: number; rewards: { code: string; reward: string; percent?: number; expiresOn?: string }[] };
 type DayData = {
   date: string;
   appointments: Appointment[];

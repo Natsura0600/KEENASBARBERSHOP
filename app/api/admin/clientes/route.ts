@@ -10,7 +10,6 @@ import {
   getLoyalty,
   listClients,
   listRewards,
-  setOptIn,
   toAwarded,
   updateReward,
 } from "@/lib/loyalty";
@@ -44,7 +43,6 @@ async function upsert(req: Request, mustExist: boolean) {
 
   const client = existing ?? (await ensureClient(phone, name));
   if (name) client.name = name;
-  if (typeof b.optIn === "boolean") await setOptIn(phone, client.name, b.optIn, "admin");
   const fresh = (await getClient(phone)) ?? client;
   if (name) fresh.name = name;
 

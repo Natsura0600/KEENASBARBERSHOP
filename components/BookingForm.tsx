@@ -59,7 +59,6 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
   const [card, setCard] = useState<Card | null>(null);
-  const [optIn, setOptIn] = useState(false);
   const reqId = useRef(0);
 
   const service = services.find((s) => s.id === serviceId);
@@ -106,7 +105,7 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
       const res = await fetch("/api/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceId, date, time, name, phone, optIn: loyalty ? optIn : false }),
+        body: JSON.stringify({ serviceId, date, time, name, phone }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -316,12 +315,9 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
               </div>
             </div>
             {loyalty && (
-              <label className="check optin">
-                <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} />
-                <span>
-                  Quiero sumar sellos en la tarjeta de fidelización ({describeRewards(loyalty)}) y recibir avisos por WhatsApp sobre mi premio. Puedo pedir que dejen de escribirme cuando quiera.
-                </span>
-              </label>
+              <p className="optin">
+                Con tu turno sumás sellos en la tarjeta de fidelización ({describeRewards(loyalty)}). Cuando ganes un premio, te avisamos por WhatsApp a este número.
+              </p>
             )}
           </div>
         </div>

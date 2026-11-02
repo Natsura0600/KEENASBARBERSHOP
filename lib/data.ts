@@ -21,7 +21,7 @@ export const newId = (prefix = "") => prefix + randomBytes(6).toString("hex");
 /* ------------------------------------------------------------------ */
 
 export function configFrom(stored?: Partial<Config> | null): Config {
-  return { ...DEFAULT_CONFIG, ...(stored ?? {}), hours: { ...DEFAULT_CONFIG.hours, ...(stored?.hours ?? {}) } };
+  return { ...DEFAULT_CONFIG, ...(stored ?? {}), hours: { ...DEFAULT_CONFIG.hours, ...(stored?.hours ?? {}) }, breaks: stored?.breaks ?? [] };
 }
 export const servicesFrom = (stored: unknown): Service[] => (Array.isArray(stored) ? (stored as Service[]) : DEFAULT_SERVICES);
 export const noticesFrom = (stored: unknown): Notice[] => (Array.isArray(stored) ? (stored as Notice[]) : DEFAULT_NOTICES);
@@ -66,9 +66,24 @@ export function daySlots(config: Config, date: string): string[] {
   const open = toMin(h.open);
   const close = toMin(h.close);
   const step = Math.max(10, config.slotMinutes);
+  const day = dow(date);
+  const pauses = (config.breaks ?? []).filter((b) => b.days.includes(day)).map((b) => [toMin(b.start), toMin(b.end)] as const);
   const out: string[] = [];
-  for (let t = open; t + step <= close; t += step) out.push(fromMin(t));
+  for (let t = open; t + step <= close; t += step) {
+    // Un turno que pisa una pausa (aunque sea un rato) no se ofrece.
+    if (pauses.some(([s, e]) => t < e && t + step > s)) continue;
+    out.push(fromMin(t));
+  }
   return out;
+}
+
+/** Los turnos de un servicio largo tienen que ser seguidos: no pueden quedar partidos por una pausa. */
+export function runAt(all: string[], i: number, need: number, step: number): string[] | null {
+  const run = all.slice(i, i + need);
+  if (run.length !== need) return null;
+  const s = Math.max(10, step);
+  for (let k = 1; k < run.length; k++) if (toMin(run[k]) - toMin(run[k - 1]) !== s) return null;
+  return run;
 }
 
 export function slotsNeeded(duration: number, step: number) {
@@ -98,8 +113,8 @@ export async function availability(config: Config, service: Service, date: strin
   const now = nowAR();
 
   const slots = all.map((time, i) => {
-    const run = all.slice(i, i + need);
-    let free = run.length === need && run.every((t) => !taken.has(t));
+    const run = runAt(all, i, need, config.slotMinutes);
+    let free = !!run && run.every((t) => !taken.has(t));
     if (free && !forAdmin) {
       if (date < now.date) free = false;
       if (date === now.date && toMin(time) < now.minutes + 10) free = false;
@@ -131,8 +146,8 @@ export async function createAppointment(input: {
   const all = daySlots(config, date);
   const start = all.indexOf(time);
   const need = slotsNeeded(service.duration, config.slotMinutes);
-  const run = start >= 0 ? all.slice(start, start + need) : [];
-  if (run.length !== need) throw new BookingError("Ese horario no está disponible.");
+  const run = start >= 0 ? runAt(all, start, need, config.slotMinutes) : null;
+  if (!run) throw new BookingError("Ese horario no está disponible.");
 
   const id = newId("t_");
   const acquired: string[] = [];

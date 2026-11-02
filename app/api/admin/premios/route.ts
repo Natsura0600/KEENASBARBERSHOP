@@ -39,7 +39,6 @@ export const GET = guard(async () => {
     rewards: rewards.map((r) => ({
       ...r,
       status: effectiveStatus(r, today),
-      optIn: byPhone.get(r.phone)?.optIn ?? false,
       manualText: manualText(r, cfg, config.name),
     })),
   });
@@ -94,7 +93,7 @@ export const PATCH = guard(async (req) => {
   } else if (action === "resend") {
     if (state !== "pending") return json({ error: "Solo se reenvían premios pendientes." }, 409);
     const c = await getClient(r.phone);
-    if (!c?.optIn) return json({ error: "Este cliente no aceptó recibir avisos por WhatsApp. Usá “Avisar por WhatsApp” (manual)." }, 409);
+    if (!c) return json({ error: "Cliente no encontrado." }, 404);
     const cfg = await getLoyalty();
     const config = await getConfig();
     const sent = await deliverReward(r, c, cfg, config.name, true);

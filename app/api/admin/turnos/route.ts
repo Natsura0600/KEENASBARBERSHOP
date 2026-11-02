@@ -31,7 +31,6 @@ export const maxDuration = 60; // el aviso por WhatsApp puede tardar unos segund
 
 export type AgendaCard = {
   stamps: number;
-  optIn: boolean;
   rewards: { code: string; reward: string; percent?: number; expiresOn?: string }[];
 };
 
@@ -59,7 +58,6 @@ export const GET = guard(async (req) => {
       const c = byPhone.get(phone);
       cards[a.id] = {
         stamps: c?.stamps ?? 0,
-        optIn: c?.optIn ?? false,
         rewards: rewards
           .filter((r) => r.phone === phone && effectiveStatus(r, today) === "pending")
           .map((r) => ({ code: r.code, reward: r.reward, percent: r.percent, expiresOn: r.expiresOn })),

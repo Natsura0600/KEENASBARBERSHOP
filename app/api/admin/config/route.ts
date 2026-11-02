@@ -2,7 +2,7 @@ import { getConfig } from "@/lib/data";
 import { getStore, keys } from "@/lib/db";
 import { isValidTime, toMin } from "@/lib/dates";
 import { body, guard, json, str } from "@/lib/http";
-import type { Config, DayHours } from "@/lib/types";
+import type { Break, Config, DayHours } from "@/lib/types";
 import { invalidateSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,14 @@ export const PUT = guard(async (req) => {
     } else {
       hours[String(d)] = null;
     }
+  }
+
+  const breaks: Break[] = [];
+  for (const raw of Array.isArray(b.breaks) ? (b.breaks as unknown[]).slice(0, 10) : []) {
+    const r = raw as { start?: unknown; end?: unknown; days?: unknown };
+    if (!isValidTime(r.start) || !isValidTime(r.end) || toMin(r.end) <= toMin(r.start)) continue;
+    const days = [...new Set((Array.isArray(r.days) ? r.days : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+    if (days.length) breaks.push({ start: r.start, end: r.end, days });
   }
 
   const num = (v: unknown, min: number, max: number, fallback: number) => {
@@ -45,6 +53,7 @@ export const PUT = guard(async (req) => {
     maxDaysAhead: num(b.maxDaysAhead, 1, 90, current.maxDaysAhead),
     conditions: str(b.conditions, 500),
     hours,
+    breaks,
   };
   await getStore().set(keys.config, next);
   invalidateSite();

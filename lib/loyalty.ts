@@ -108,7 +108,7 @@ export async function ensureClient(phone: string, name: string): Promise<Client>
     stamps: 0,
     total: 0,
     earned: 0,
-    optIn: false,
+    optIn: true, // el aviso del premio es parte de la tarjeta: siempre se manda
     createdAt: new Date().toISOString(),
   };
   await saveClient(c);
@@ -204,7 +204,7 @@ export function manualText(r: Reward, cfg: LoyaltyConfig, shop: string): string 
 
 /** Manda el aviso por la API. Si el cliente no aceptó o el envío automático está apagado, no hace nada. */
 export async function deliverReward(r: Reward, client: Client, cfg: LoyaltyConfig, shop: string, force = false): Promise<Reward> {
-  if (!force && (!cfg.autoSend || !client.optIn)) return r;
+  if (!force && !cfg.autoSend) return r;
   if (cfg.channel === "baileys") {
     // Número vinculado con QR: texto normal, sin plantilla.
     const { sendWhatsAppText } = await import("./wa-baileys");

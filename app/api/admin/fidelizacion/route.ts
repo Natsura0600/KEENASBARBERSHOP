@@ -22,7 +22,6 @@ async function payload() {
     suggested: suggestedTemplateText(loyalty.template.vars),
     stats: {
       clients: clients.length,
-      withOptIn: clients.filter((c) => c.optIn).length,
       pending: rewards.filter((r) => effectiveStatus(r, today) === "pending").length,
       redeemed: rewards.filter((r) => r.status === "redeemed").length,
     },

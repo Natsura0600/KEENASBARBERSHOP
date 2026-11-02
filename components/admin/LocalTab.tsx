@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { DAYS_ES } from "@/lib/dates";
 import { ORDER } from "@/lib/format";
-import type { Config } from "@/lib/types";
+import type { Break, Config } from "@/lib/types";
 import { api } from "./api";
 
 export default function LocalTab() {
@@ -26,6 +26,14 @@ export default function LocalTab() {
   const setHour = (d: number, part: "open" | "close", v: string) => {
     const cur = c.hours[String(d)] ?? { open: "10:00", close: "20:00" };
     set("hours", { ...c.hours, [String(d)]: { ...cur, [part]: v } });
+  };
+
+  const breaks = c.breaks ?? [];
+  const setBreaks = (next: Break[]) => set("breaks", next);
+  const patchBreak = (i: number, p: Partial<Break>) => setBreaks(breaks.map((b, k) => (k === i ? { ...b, ...p } : b)));
+  const toggleDay = (i: number, d: number) => {
+    const cur = breaks[i].days;
+    patchBreak(i, { days: cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort() });
   };
 
   async function save() {
@@ -126,6 +134,43 @@ export default function LocalTab() {
             );
           })}
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Pausas (almuerzo, descansos)</h3>
+        <p className="hint" style={{ marginBottom: 14, fontSize: 14 }}>
+          En ese rango no se ofrecen turnos. Un turno que pise la pausa, aunque sea un rato, tampoco se ofrece, y un servicio largo no se parte por la mitad. Los turnos ya reservados no se tocan.
+        </p>
+        {breaks.length === 0 && <p className="hint">Sin pausas: se atiende todo el horario de corrido.</p>}
+        {breaks.map((b, i) => (
+          <div className="brk" key={i}>
+            <div className="times">
+              <input className="input" type="time" value={b.start} onChange={(e) => patchBreak(i, { start: e.target.value })} aria-label="Pausa desde" />
+              <span>a</span>
+              <input className="input" type="time" value={b.end} onChange={(e) => patchBreak(i, { end: e.target.value })} aria-label="Pausa hasta" />
+            </div>
+            <div className="brk-days">
+              {ORDER.map((d) => (
+                <button type="button" key={d} aria-pressed={b.days.includes(d)} onClick={() => toggleDay(i, d)} title={DAYS_ES[d]}>
+                  {DAYS_ES[d].slice(0, 3)}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="btn danger sm" onClick={() => setBreaks(breaks.filter((_, k) => k !== i))}>
+              Quitar
+            </button>
+          </div>
+        ))}
+        {breaks.length < 10 && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ marginTop: 12 }}
+            onClick={() => setBreaks([...breaks, { start: "13:00", end: "14:00", days: ORDER.filter((d) => c.hours[String(d)]) }])}
+          >
+            + Agregar pausa
+          </button>
+        )}
       </div>
 
       <div className="savebar">

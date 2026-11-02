@@ -1,5 +1,7 @@
 export type DayHours = { open: string; close: string } | null;
 
+export type Break = { start: string; end: string; days: number[] }; // pausa (ej. almuerzo) en los días indicados (0 dom ... 6 sáb)
+
 export type Config = {
   name: string;
   tagline: string;
@@ -15,6 +17,7 @@ export type Config = {
   maxDaysAhead: number;
   conditions: string;
   hours: Record<string, DayHours>; // "0" domingo ... "6" sábado
+  breaks: Break[];
 };
 
 export type Service = {

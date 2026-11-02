@@ -15,16 +15,16 @@ type ConfigData = {
   shop: string;
   services: { id: string; name: string; active: boolean }[];
   suggested: string;
-  stats: { clients: number; withOptIn: number; pending: number; redeemed: number };
+  stats: { clients: number; pending: number; redeemed: number };
 };
-type RewardRow = Omit<Reward, "status"> & { status: Reward["status"] | "expired"; optIn: boolean; manualText: string };
+type RewardRow = Omit<Reward, "status"> & { status: Reward["status"] | "expired"; manualText: string };
 type ClientRow = Client & { pending: number };
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pendiente", redeemed: "Canjeado", cancelled: "Anulado", expired: "Vencido" };
 const STATUS_PILL: Record<string, string> = { pending: "reserved", redeemed: "done", cancelled: "cancelled", expired: "noshow" };
 
 function sendLabel(r: RewardRow) {
-  if (!r.send) return r.optIn ? "Sin avisar" : "No aceptó avisos";
+  if (!r.send) return "Sin avisar";
   if (!r.send.ok) return `Falló el envío${r.send.error ? `: ${r.send.error}` : ""}`;
   if (r.send.via === "simulated") return "Envío simulado (no hay número vinculado)";
   if (r.send.via === "manual") return "Avisado a mano";
@@ -189,11 +189,9 @@ function Premios({ onChange }: { onChange: () => void }) {
                       <a className="btn sm" href={link} target="_blank" rel="noopener noreferrer" onClick={() => !r.send?.ok && act(r.code, "mark_sent")}>
                         Avisar por WhatsApp
                       </a>
-                      {r.optIn && (
-                        <button className="btn ghost sm" disabled={busy} onClick={() => act(r.code, "resend")}>
-                          {r.send?.ok ? "Reenviar" : "Enviar aviso"}
-                        </button>
-                      )}
+                      <button className="btn ghost sm" disabled={busy} onClick={() => act(r.code, "resend")}>
+                        {r.send?.ok ? "Reenviar" : "Enviar aviso"}
+                      </button>
                       <button className="btn ghost sm" disabled={busy} onClick={() => act(r.code, "redeem")}>
                         Marcar canjeado
                       </button>
@@ -257,7 +255,7 @@ function Clientes({ required, onChange }: { required: number; onChange: () => vo
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({ name: "", phone: "", stamps: "0", optIn: false });
+  const [form, setForm] = useState({ name: "", phone: "", stamps: "0" });
 
   const load = useCallback(async () => {
     try {
@@ -314,17 +312,6 @@ function Clientes({ required, onChange }: { required: number; onChange: () => vo
                   {prettyPhone(c.phone)} · {c.total} sello{c.total === 1 ? "" : "s"} en total
                   {c.lastVisit ? ` · última visita ${dmy(c.lastVisit)}` : ""}
                 </small>
-                <small>
-                  <label className="check" style={{ display: "inline-flex" }}>
-                    <input
-                      type="checkbox"
-                      checked={c.optIn}
-                      disabled={busy}
-                      onChange={(e) => save("PATCH", { phone: c.phone, optIn: e.target.checked }, "Consentimiento actualizado.")}
-                    />
-                    Aceptó avisos por WhatsApp
-                  </label>
-                </small>
               </div>
               <div className="acts">
                 <input
@@ -355,7 +342,7 @@ function Clientes({ required, onChange }: { required: number; onChange: () => vo
         className="card"
         onSubmit={(e) => {
           e.preventDefault();
-          save("POST", { ...form, stamps: Number(form.stamps || 0) }, "Cliente guardado.").then(() => setForm({ name: "", phone: "", stamps: "0", optIn: false }));
+          save("POST", { ...form, stamps: Number(form.stamps || 0) }, "Cliente guardado.").then(() => setForm({ name: "", phone: "", stamps: "0" }));
         }}
       >
         <h3>Agregar cliente</h3>
@@ -373,10 +360,6 @@ function Clientes({ required, onChange }: { required: number; onChange: () => vo
             <label>Sellos que ya tiene</label>
             <input className="input" inputMode="numeric" value={form.stamps} onChange={(e) => setForm({ ...form, stamps: e.target.value.replace(/\D/g, "") })} />
           </div>
-          <label className="check">
-            <input type="checkbox" checked={form.optIn} onChange={(e) => setForm({ ...form, optIn: e.target.checked })} />
-            Me confirmó que quiere recibir avisos por WhatsApp
-          </label>
           <button className="btn" disabled={busy}>Guardar cliente</button>
         </div>
       </form>
