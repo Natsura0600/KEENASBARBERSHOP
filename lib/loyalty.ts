@@ -5,7 +5,7 @@ import { getStore, getStoreOrNull, keys } from "./db";
 import { DEFAULT_LOYALTY } from "./defaults";
 import { normalizePhone } from "./phone";
 import { sendTemplate } from "./whatsapp";
-import type { Appointment, Client, LoyaltyConfig, Reward, TemplateVar } from "./types";
+import type { Appointment, Client, LoyaltyConfig, Milestone, Reward, TemplateVar } from "./types";
 
 import { TEMPLATE_VARS } from "./loyalty-shared";
 export { suggestedTemplateText, TEMPLATE_VARS } from "./loyalty-shared";
@@ -20,6 +20,7 @@ export function mergeLoyalty(s?: Partial<LoyaltyConfig> | null): LoyaltyConfig {
     ...(s ?? {}),
     template: { ...DEFAULT_LOYALTY.template, ...(s?.template ?? {}) },
     stamps: { ...(s?.stamps ?? {}) },
+    milestones: Array.isArray(s?.milestones) ? s!.milestones : DEFAULT_LOYALTY.milestones,
   };
 }
 
@@ -51,9 +52,17 @@ export function cleanLoyalty(b: Record<string, unknown>, current: LoyaltyConfig,
     : current.template.vars;
   const name = text(t.name, 120).toLowerCase();
   const language = text(t.language, 10);
+  const cutsRequired = int(b.cutsRequired, 2, 50, current.cutsRequired);
+  const seen = new Set<number>();
+  const milestones: Milestone[] = (Array.isArray(b.milestones) ? (b.milestones as Record<string, unknown>[]) : current.milestones)
+    .map((m) => ({ at: int(m?.at, 1, 49, 0), name: text(m?.name, 80), percent: int(m?.percent, 0, 100, 0) }))
+    .filter((m) => m.at >= 1 && m.at < cutsRequired && m.name && !seen.has(m.at) && seen.add(m.at))
+    .sort((a, c) => a.at - c.at)
+    .slice(0, 5);
   return {
     enabled: b.enabled === true,
-    cutsRequired: int(b.cutsRequired, 2, 50, current.cutsRequired),
+    cutsRequired,
+    milestones,
     rewardName: text(b.rewardName, 80) || current.rewardName,
     validDays: int(b.validDays, 0, 730, current.validDays),
     stamps,
@@ -150,12 +159,13 @@ async function newCode(): Promise<string> {
   throw new Error("No se pudo generar un código único");
 }
 
-async function createReward(client: Client, cfg: LoyaltyConfig, fromApptId?: string): Promise<Reward> {
+async function createReward(client: Client, cfg: LoyaltyConfig, fromApptId?: string, m?: Milestone): Promise<Reward> {
   const r: Reward = {
     code: await newCode(),
     phone: client.phone,
     name: client.name,
-    reward: cfg.rewardName,
+    reward: m ? m.name : cfg.rewardName,
+    ...(m ? { milestone: m.at, ...(m.percent > 0 ? { percent: m.percent } : {}) } : {}),
     createdAt: new Date().toISOString(),
     ...(cfg.validDays > 0 ? { expiresOn: addDays(nowAR().date, cfg.validDays) } : {}),
     status: "pending",
@@ -249,20 +259,37 @@ async function completeCards(client: Client, cfg: LoyaltyConfig, shop: string, f
 const sentState = (r: Reward): Awarded["sent"] => (!r.send ? "no" : !r.send.ok ? "error" : r.send.via === "simulated" ? "simulated" : "whatsapp");
 export const toAwarded = (r: Reward): Awarded => ({ code: r.code, reward: r.reward, sent: sentState(r) });
 
-/** Se llama cuando un turno pasa a "cobrado" sin canje. */
+/** Suma sellos de a uno: cada hito que se cruza da su premio y, al completar la tarjeta, se reinicia (los sobrantes siguen). */
+async function applyStamps(client: Client, n: number, cfg: LoyaltyConfig, shop: string, apptId?: string): Promise<Reward[]> {
+  const out: Reward[] = [];
+  for (let i = 0; i < n; i++) {
+    client.stamps += 1;
+    for (const m of cfg.milestones) {
+      if (m.at === client.stamps && m.at < cfg.cutsRequired) out.push(await createReward(client, cfg, apptId, m));
+    }
+    if (client.stamps >= cfg.cutsRequired) {
+      client.stamps -= cfg.cutsRequired;
+      out.push(await createReward(client, cfg, apptId));
+    }
+  }
+  await saveClient(client);
+  for (const r of out) await deliverReward(r, client, cfg, shop);
+  return out;
+}
+
+/** Se llama cuando un turno pasa a "cobrado". */
 export async function addStampsFor(appt: Appointment, shop: string) {
   const cfg = await getLoyalty();
   if (!cfg.enabled) return { loyalty: undefined, awarded: [] as Awarded[] };
   const phone = normalizePhone(appt.phone);
   if (!phone) return { loyalty: undefined, awarded: [] as Awarded[] };
-  const n = cfg.stamps[appt.serviceId] ?? 1;
+  const n = Math.min(cfg.stamps[appt.serviceId] ?? 1, 10);
   if (n <= 0) return { loyalty: undefined, awarded: [] as Awarded[] };
 
   const client = await ensureClient(phone, appt.name);
-  client.stamps += n;
   client.total += n;
   client.lastVisit = appt.date;
-  const rewards = await completeCards(client, cfg, shop, appt.id);
+  const rewards = await applyStamps(client, n, cfg, shop, appt.id);
   return {
     loyalty: { stamps: n, rewards: rewards.map((r) => r.code) } as NonNullable<Appointment["loyalty"]>,
     awarded: rewards.map(toAwarded),
@@ -283,8 +310,8 @@ export async function revertLoyalty(appt: Appointment) {
       delete r.redeemedApptId;
       await saveReward(r);
     }
-    return;
   }
+  if (!l.stamps && !l.rewards.length) return;
 
   const phone = normalizePhone(appt.phone);
   const client = phone ? await getClient(phone) : null;
@@ -298,7 +325,8 @@ export async function revertLoyalty(appt: Appointment) {
     r.status = "cancelled";
     await saveReward(r);
     client.earned = Math.max(0, client.earned - 1);
-    client.stamps += cfg.cutsRequired;
+    // Solo completar la tarjeta reinicia los sellos; un premio intermedio no los toca.
+    if (r.milestone === undefined) client.stamps += cfg.cutsRequired;
   }
   client.stamps = Math.max(0, client.stamps - l.stamps);
   client.total = Math.max(0, client.total - l.stamps);
@@ -330,9 +358,10 @@ export async function adjustStamps(client: Client, newStamps: number, shop: stri
   return completeCards(client, cfg, shop);
 }
 
-export async function grantReward(client: Client, shop: string): Promise<Reward> {
+export async function grantReward(client: Client, shop: string, milestoneAt?: number): Promise<Reward> {
   const cfg = await getLoyalty();
-  const r = await createReward(client, cfg);
+  const m = milestoneAt === undefined ? undefined : cfg.milestones.find((x) => x.at === milestoneAt);
+  const r = await createReward(client, cfg, undefined, m);
   await saveClient(client);
   return deliverReward(r, client, cfg, shop);
 }

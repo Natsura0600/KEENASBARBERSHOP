@@ -1,4 +1,4 @@
-import type { TemplateVar } from "./types";
+import type { LoyaltyConfig, TemplateVar } from "./types";
 
 // Parte "pura" de la fidelización: la usan tanto el servidor como el panel del navegador.
 
@@ -27,7 +27,8 @@ export function suggestedTemplateText(vars: TemplateVar[]): string {
   const sellos = at("sellos");
   return [
     `Hola${nombre ? ` ${nombre}` : ""}!`,
-    `Completaste tu tarjeta de fidelización${negocio ? ` de ${negocio}` : ""}${sellos ? ` (${sellos} sellos)` : ""}${premio ? ` y ganaste: ${premio}` : ""}.`,
+    `Ganaste un premio en tu tarjeta de fidelización${negocio ? ` de ${negocio}` : ""}${premio ? `: ${premio}` : ""}.`,
+    sellos ? `Llevás ${sellos} sellos.` : "",
     codigo ? `Tu código es ${codigo}.` : "",
     venc ? `Vencimiento: ${venc}.` : "",
     "Mostralo en tu próximo turno.",
@@ -36,3 +37,9 @@ export function suggestedTemplateText(vars: TemplateVar[]): string {
     .join(" ");
 }
 
+/** "15% de descuento a los 5 cortes y 1 corte gratis a los 10" */
+export function describeRewards(cfg: Pick<LoyaltyConfig, "milestones" | "rewardName" | "cutsRequired">): string {
+  const parts = [...cfg.milestones].sort((a, b) => a.at - b.at).map((m) => `${m.name} a los ${m.at} cortes`);
+  parts.push(`${cfg.rewardName} a los ${cfg.cutsRequired}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}` : parts[0];
+}

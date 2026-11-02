@@ -2140,3 +2140,12 @@ body:has(dialog.lb[open]) .sticky-cta {
     animation: none;
   }
 }
+
+.lcard-grid li.ms {
+  border-style: solid;
+  border-color: var(--red-lo);
+  color: var(--red-hi);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}

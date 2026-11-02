@@ -31,7 +31,7 @@ export const maxDuration = 60; // el aviso por WhatsApp puede tardar unos segund
 export type AgendaCard = {
   stamps: number;
   optIn: boolean;
-  rewards: { code: string; reward: string; expiresOn?: string }[];
+  rewards: { code: string; reward: string; percent?: number; expiresOn?: string }[];
 };
 
 export const GET = guard(async (req) => {
@@ -65,7 +65,7 @@ export const GET = guard(async (req) => {
         optIn: c?.optIn ?? false,
         rewards: rewards
           .filter((r) => r.phone === phone && effectiveStatus(r, today) === "pending")
-          .map((r) => ({ code: r.code, reward: r.reward, expiresOn: r.expiresOn })),
+          .map((r) => ({ code: r.code, reward: r.reward, percent: r.percent, expiresOn: r.expiresOn })),
       };
     }
   }
@@ -133,6 +133,7 @@ export const PATCH = guard(async (req) => {
   // ---- Tarjeta de fidelización ----
   let loyaltyPatch: Appointment["loyalty"] = appt.loyalty;
   let awarded: Awarded[] = [];
+  let redeemedPercent = 0;
   try {
     if (wasDone && next !== "done") {
       await revertLoyalty(appt);
@@ -143,6 +144,13 @@ export const PATCH = guard(async (req) => {
       if (code) {
         const r = await redeemFor(code, appt);
         loyaltyPatch = { stamps: 0, rewards: [], redeemed: r.code };
+        if (r.percent) {
+          // Con un descuento el cliente igual pagó el corte: suma su sello.
+          redeemedPercent = r.percent;
+          const res = await addStampsFor(appt, (await getConfig()).name);
+          if (res.loyalty) loyaltyPatch = { ...res.loyalty, redeemed: r.code };
+          awarded = res.awarded;
+        }
       } else {
         const res = await addStampsFor(appt, (await getConfig()).name);
         loyaltyPatch = res.loyalty;
@@ -160,8 +168,10 @@ export const PATCH = guard(async (req) => {
     await deleteCashEntry(appt.date, cashId);
   } else if (next === "done") {
     const redeemed = Boolean(loyaltyPatch?.redeemed);
-    // Un premio canjeado se cobra $0 salvo que el dueño indique otro monto (ej. descuento parcial).
-    const amount = money(b.amount) ?? (redeemed ? 0 : appt.price);
+    // Premio canjeado: gratis = $0; descuento = precio menos el porcentaje. El dueño puede indicar otro monto.
+    const amount =
+      money(b.amount) ??
+      (redeemed ? (redeemedPercent ? Math.round((appt.price * (100 - redeemedPercent)) / 100) : 0) : appt.price);
     const method = METHODS.includes(b.method as PayMethod) ? (b.method as PayMethod) : "efectivo";
     await saveCashEntry({
       id: cashId,

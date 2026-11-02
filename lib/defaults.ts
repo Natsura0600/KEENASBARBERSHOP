@@ -88,6 +88,7 @@ export const DEFAULT_LOYALTY: LoyaltyConfig = {
   enabled: false,
   cutsRequired: 10,
   rewardName: "1 corte gratis",
+  milestones: [{ at: 5, name: "15% de descuento", percent: 15 }],
   validDays: 60,
   stamps: {},
   channel: "baileys",
@@ -98,5 +99,5 @@ export const DEFAULT_LOYALTY: LoyaltyConfig = {
     vars: ["nombre", "premio", "codigo", "vencimiento"],
   },
   manualMessage:
-    "Hola {nombre}! Completaste tu tarjeta de {negocio} y ganaste: {premio}. Tu código es {codigo}. Vencimiento: {vencimiento}. Mostralo en tu próximo turno.",
+    "Hola {nombre}! Ganaste un premio en {negocio}: {premio}. Tu código es {codigo}. Vencimiento: {vencimiento}. Mostralo en tu próximo turno.",
 };

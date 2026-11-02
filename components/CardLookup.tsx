@@ -3,7 +3,9 @@
 import { useState } from "react";
 import LoyaltyCard from "./LoyaltyCard";
 
-type Res = { enabled: boolean; found?: boolean; required?: number; rewardName?: string; stamps?: number; rewards?: number; expiresOn?: string };
+import type { Milestone } from "@/lib/types";
+
+type Res = { enabled: boolean; found?: boolean; required?: number; rewardName?: string; milestones?: Milestone[]; stamps?: number; rewards?: number; rewardNames?: string[]; expiresOn?: string };
 
 export default function CardLookup() {
   const [phone, setPhone] = useState("");
@@ -51,7 +53,8 @@ export default function CardLookup() {
           stamps={res.stamps ?? 0}
           required={res.required ?? 10}
           rewardName={res.rewardName ?? ""}
-          pending={res.rewards ?? 0}
+          milestones={res.milestones}
+          pendingNames={res.rewardNames}
           note={res.expiresOn ? `Tu premio vence el ${res.expiresOn.split("-").reverse().join("/")}.` : undefined}
         />
       )}

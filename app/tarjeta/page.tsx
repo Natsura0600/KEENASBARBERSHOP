@@ -3,6 +3,7 @@ import CardLookup from "@/components/CardLookup";
 import SiteNav from "@/components/SiteNav";
 import { getConfig } from "@/lib/data";
 import { getLoyalty } from "@/lib/loyalty";
+import { describeRewards } from "@/lib/loyalty-shared";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Tarjeta de fidelización" };
@@ -18,8 +19,7 @@ export default async function TarjetaPage() {
           <h1 className="display">Tu tarjeta de sellos</h1>
           {loyalty.enabled ? (
             <p>
-              Cada corte suma un sello. Con {loyalty.cutsRequired} sellos ganás <b>{loyalty.rewardName}</b>
-              {loyalty.validDays > 0 ? ` (vale ${loyalty.validDays} días desde que lo ganás)` : ""}. Ingresá tu teléfono para ver cuántos llevás.
+              Cada corte suma un sello: <b>{describeRewards(loyalty)}</b>{loyalty.validDays > 0 ? ` (cada premio vale ${loyalty.validDays} días desde que lo ganás)` : ""}. Ingresá tu teléfono para ver cuántos llevás.
             </p>
           ) : (
             <p>La tarjeta de fidelización no está activa por ahora.</p>

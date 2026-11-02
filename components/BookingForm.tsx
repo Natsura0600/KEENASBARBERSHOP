@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DAYS_SHORT, MONTHS_ES, addDays, dow, formatDateEs, listDays } from "@/lib/dates";
 import { ars } from "@/lib/format";
+import { describeRewards } from "@/lib/loyalty-shared";
+import type { Milestone } from "@/lib/types";
 import LoyaltyCard from "./LoyaltyCard";
 import type { DayHours, Service } from "@/lib/types";
 
@@ -13,10 +15,10 @@ type Props = {
   today: string;
   initialServiceId?: string;
   shop: { name: string; address: string; whatsapp: string; conditions: string };
-  loyalty?: { cutsRequired: number; rewardName: string };
+  loyalty?: { cutsRequired: number; rewardName: string; milestones: Milestone[] };
 };
 
-type Card = { stamps: number; required: number; rewardName: string };
+type Card = { stamps: number; required: number; rewardName: string; milestones: Milestone[] };
 
 type Slot = { time: string; free: boolean };
 type Done = { date: string; time: string; serviceName: string; price: number; name: string };
@@ -162,7 +164,7 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
           </div>
           {card && (
             <div style={{ marginTop: 26 }}>
-              <LoyaltyCard stamps={card.stamps} required={card.required} rewardName={card.rewardName} note="El sello se carga cuando se cobra tu turno." />
+              <LoyaltyCard stamps={card.stamps} required={card.required} rewardName={card.rewardName} milestones={card.milestones} note="El sello se carga cuando se cobra tu turno." />
             </div>
           )}
           <p className="hint" style={{ marginTop: 22 }}>
@@ -317,7 +319,7 @@ export default function BookingForm({ services, hours, maxDaysAhead, today, init
               <label className="check optin">
                 <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} />
                 <span>
-                  Quiero sumar sellos en la tarjeta de fidelización ({loyalty.cutsRequired} cortes = {loyalty.rewardName}) y recibir avisos por WhatsApp sobre mi premio. Puedo pedir que dejen de escribirme cuando quiera.
+                  Quiero sumar sellos en la tarjeta de fidelización ({describeRewards(loyalty)}) y recibir avisos por WhatsApp sobre mi premio. Puedo pedir que dejen de escribirme cuando quiera.
                 </span>
               </label>
             )}

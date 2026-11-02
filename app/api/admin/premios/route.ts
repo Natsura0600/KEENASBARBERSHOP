@@ -30,6 +30,8 @@ export const GET = guard(async () => {
   return json({
     whatsapp: waStatus(),
     channel: cfg.channel,
+    milestones: cfg.milestones,
+    rewardName: cfg.rewardName,
     linked: (await getWaState()).linked,
     autoSend: cfg.autoSend,
     rewards: rewards.map((r) => ({
@@ -51,7 +53,9 @@ export const POST = guard(async (req) => {
   if (!existing && name.length < 2) return json({ error: "Poné el nombre del cliente." }, 400);
   const client = existing ?? (await ensureClient(phone, name));
   const config = await getConfig();
-  const reward = await grantReward(client, config.name);
+  const at = b.milestone === undefined || b.milestone === "" ? undefined : Number(b.milestone);
+  if (at !== undefined && !(await getLoyalty()).milestones.some((m) => m.at === at)) return json({ error: "Ese premio intermedio no existe." }, 400);
+  const reward = await grantReward(client, config.name, at);
   return json({ ok: true, reward, awarded: toAwarded(reward) });
 }, { admin: true });
 

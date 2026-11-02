@@ -72,10 +72,13 @@ export type CashEntry = {
 
 export type TemplateVar = "nombre" | "premio" | "codigo" | "vencimiento" | "negocio" | "sellos";
 
+export type Milestone = { at: number; name: string; percent: number }; // percent 0 = premio sin descuento automático
+
 export type LoyaltyConfig = {
   enabled: boolean;
   cutsRequired: number; // sellos para completar la tarjeta
-  rewardName: string; // "1 corte gratis"
+  rewardName: string; // premio al completar la tarjeta, ej. "1 corte gratis"
+  milestones: Milestone[]; // premios intermedios (ej. a los 5 sellos, 15% de descuento)
   validDays: number; // días de vigencia del premio (0 = no vence)
   stamps: Record<string, number>; // serviceId -> sellos que suma (si falta, 1; 0 = no suma)
   channel: "baileys" | "api"; // baileys = número vinculado con QR; api = API oficial de Meta (con plantilla)
@@ -100,6 +103,8 @@ export type Client = {
 export type RewardStatus = "pending" | "redeemed" | "cancelled";
 
 export type Reward = {
+  percent?: number; // premio de descuento (15 = 15% off)
+  milestone?: number; // si es un premio intermedio: en qué sello se ganó
   code: string; // XXX-XXX
   phone: string;
   name: string;

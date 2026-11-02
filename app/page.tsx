@@ -4,6 +4,7 @@ import RevealObserver from "@/components/RevealObserver";
 import SiteNav from "@/components/SiteNav";
 import Works from "@/components/Works";
 import { getLoyalty } from "@/lib/loyalty";
+import { describeRewards } from "@/lib/loyalty-shared";
 import { WORKS } from "@/lib/works";
 import { getConfig, getNotices, getServices } from "@/lib/data";
 import { DAYS_ES, nowAR } from "@/lib/dates";
@@ -173,15 +174,15 @@ export default async function Home() {
                 <span className="eyebrow">Para los que vuelven</span>
                 <h2 className="display">Cada corte suma</h2>
                 <p>
-                  Con cada corte te llevás un sello. Al llegar a {loyalty.cutsRequired} ganás <b>{loyalty.rewardName}</b>
-                  {loyalty.validDays > 0 ? ` (válido por ${loyalty.validDays} días)` : ""}. No tenés que bajar nada: tu tarjeta queda guardada con tu teléfono.
+                  Con cada corte te llevás un sello: <b>{describeRewards(loyalty)}</b>
+                  {loyalty.validDays > 0 ? ` (cada premio vale ${loyalty.validDays} días)` : ""}. No tenés que bajar nada: tu tarjeta queda guardada con tu teléfono.
                 </p>
                 <Link className="btn ghost" href="/tarjeta">
                   Ver mi tarjeta
                 </Link>
               </div>
               <div className="reveal" style={{ ["--d" as string]: "0.1s" }}>
-                <LoyaltyCard stamps={Math.ceil(loyalty.cutsRequired / 2)} required={loyalty.cutsRequired} rewardName={loyalty.rewardName} note="Ejemplo de cómo se ve." />
+                <LoyaltyCard stamps={Math.ceil(loyalty.cutsRequired / 2) + 1} required={loyalty.cutsRequired} rewardName={loyalty.rewardName} milestones={loyalty.milestones} note="Ejemplo de cómo se ve." />
               </div>
             </div>
           </section>
@@ -266,7 +267,7 @@ export default async function Home() {
                 </figure>
               ))}
             </div>
-            <p className="review-note">Estas son las opiniones de algunos de nuestros clientes :)</p>
+            <p className="review-note">Opiniones de clientes publicadas en el perfil de AgendaPro (5 de 5, 19 reseñas).</p>
           </div>
         </section>
 

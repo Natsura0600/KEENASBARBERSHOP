@@ -18,7 +18,7 @@ export const POST = guard(async (req) => {
   if (!phone) return json({ error: "Revisá el teléfono. Poné el código de área, por ejemplo 2323 45-6789." }, 400);
 
   const client = await getClient(phone);
-  const base = { enabled: true, required: cfg.cutsRequired, rewardName: cfg.rewardName };
+  const base = { enabled: true, required: cfg.cutsRequired, rewardName: cfg.rewardName, milestones: cfg.milestones };
   if (!client) return json({ ...base, found: false });
 
   const today = nowAR().date;
@@ -29,6 +29,7 @@ export const POST = guard(async (req) => {
     stamps: client.stamps,
     total: client.total,
     rewards: pending.length,
+    rewardNames: pending.map((r) => r.reward),
     expiresOn: pending.map((r) => r.expiresOn).filter(Boolean).sort()[0],
   });
 }, {});

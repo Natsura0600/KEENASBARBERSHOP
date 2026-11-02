@@ -6,7 +6,7 @@ import { ars } from "@/lib/format";
 import type { Appointment, PayMethod, Service } from "@/lib/types";
 import { api, waNumber } from "./api";
 
-type Card = { stamps: number; optIn: boolean; rewards: { code: string; reward: string; expiresOn?: string }[] };
+type Card = { stamps: number; optIn: boolean; rewards: { code: string; reward: string; percent?: number; expiresOn?: string }[] };
 type DayData = {
   date: string;
   appointments: Appointment[];
@@ -214,7 +214,8 @@ export default function AgendaTab({ today }: { today: string }) {
                         aria-label="Canjear premio"
                         onChange={(e) => {
                           setRedeem(e.target.value);
-                          setAmount(e.target.value ? "0" : String(a.price));
+                          const r = data.cards![a.id].rewards.find((x) => x.code === e.target.value);
+                          setAmount(String(r ? (r.percent ? Math.round((a.price * (100 - r.percent)) / 100) : 0) : a.price));
                         }}
                       >
                         <option value="">Sin premio</option>

@@ -45,14 +45,14 @@ export const POST = guard(async (req) => {
   const appt = await createAppointment({ config, service, date, time, name, phone, source: "web" });
 
   // Tarjeta de fidelización: alta del cliente y consentimiento. Si algo falla acá, la reserva igual queda hecha.
-  let card: { stamps: number; required: number; rewardName: string } | undefined;
+  let card: { stamps: number; required: number; rewardName: string; milestones: { at: number; name: string; percent: number }[] } | undefined;
   try {
     const loyalty = await getLoyalty();
     const canonical = normalizePhone(phone);
     if (loyalty.enabled && canonical) {
       const client = await ensureClient(canonical, name);
       const accepted = b.optIn === true ? await setOptIn(canonical, name, true, "web") : client;
-      card = { stamps: accepted.stamps, required: loyalty.cutsRequired, rewardName: loyalty.rewardName };
+      card = { stamps: accepted.stamps, required: loyalty.cutsRequired, rewardName: loyalty.rewardName, milestones: loyalty.milestones };
     }
   } catch (e) {
     console.error("fidelización (reserva)", e);

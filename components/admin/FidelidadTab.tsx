@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { VAR_LABELS, TEMPLATE_VARS } from "@/lib/loyalty-shared";
+import { TEMPLATE_VARS, VAR_LABELS, suggestedTemplateText } from "@/lib/loyalty-shared";
 import { prettyPhone } from "@/lib/phone";
 import type { Client, LoyaltyConfig, Reward, TemplateVar } from "@/lib/types";
 import { api } from "./api";
@@ -81,12 +81,16 @@ function Premios({ onChange }: { onChange: () => void }) {
   const [notice, setNotice] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "" });
+  const [form, setForm] = useState({ name: "", phone: "", milestone: "" });
+  const [ms, setMs] = useState<{ at: number; name: string }[]>([]);
+  const [finalName, setFinalName] = useState("");
   const [filter, setFilter] = useState<"pending" | "all">("pending");
 
   const load = useCallback(async () => {
     try {
-      const d = await api<{ rewards: RewardRow[]; whatsapp: WaState; channel: string; linked: boolean }>("/api/admin/premios");
+      const d = await api<{ rewards: RewardRow[]; whatsapp: WaState; channel: string; linked: boolean; milestones: { at: number; name: string }[]; rewardName: string }>("/api/admin/premios");
+      setMs(d.milestones);
+      setFinalName(d.rewardName);
       setNotice(
         d.channel === "baileys"
           ? d.linked
@@ -128,7 +132,7 @@ function Premios({ onChange }: { onChange: () => void }) {
     setMsg(null);
     try {
       await api("/api/admin/premios", { method: "POST", json: form });
-      setForm({ name: "", phone: "" });
+      setForm({ name: "", phone: "", milestone: "" });
       setMsg({ ok: true, text: "Premio entregado." });
       await load();
       onChange();
@@ -225,6 +229,19 @@ function Premios({ onChange }: { onChange: () => void }) {
             <label>Teléfono (con código de área)</label>
             <input className="input" type="tel" value={form.phone} maxLength={30} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="2323 45 6789" required />
           </div>
+          {ms.length > 0 && (
+            <div className="field">
+              <label>Qué premio</label>
+              <select className="input" value={form.milestone} onChange={(e) => setForm({ ...form, milestone: e.target.value })}>
+                <option value="">{finalName} (tarjeta completa)</option>
+                {ms.map((m) => (
+                  <option key={m.at} value={m.at}>
+                    {m.name} (a los {m.at} sellos)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button className="btn" disabled={busy || !form.phone}>Dar premio</button>
         </div>
       </form>
@@ -387,18 +404,7 @@ function Config({ data, onSaved, reload }: { data: ConfigData; onSaved: (d: Conf
     patch({ template: { ...c.template, vars: next } });
   };
 
-  // Mismo texto que genera el servidor, calculado en vivo con el orden que se está eligiendo.
-  const suggested = (() => {
-    const at = (v: TemplateVar) => (vars.indexOf(v) >= 0 ? `{{${vars.indexOf(v) + 1}}}` : null);
-    const parts = [
-      `Hola${at("nombre") ? ` ${at("nombre")}` : ""}!`,
-      `Completaste tu tarjeta de fidelización${at("negocio") ? ` de ${at("negocio")}` : ""}${at("sellos") ? ` (${at("sellos")} sellos)` : ""}${at("premio") ? ` y ganaste: ${at("premio")}` : ""}.`,
-      at("codigo") ? `Tu código es ${at("codigo")}.` : "",
-      at("vencimiento") ? `Vencimiento: ${at("vencimiento")}.` : "",
-      "Mostralo en tu próximo turno.",
-    ];
-    return parts.filter(Boolean).join(" ");
-  })();
+  const suggested = suggestedTemplateText(vars);
 
   async function save() {
     setBusy(true);
@@ -428,7 +434,7 @@ function Config({ data, onSaved, reload }: { data: ConfigData; onSaved: (d: Conf
             <input className="input" inputMode="numeric" value={c.cutsRequired} onChange={(e) => patch({ cutsRequired: Number(e.target.value.replace(/\D/g, "")) })} />
           </div>
           <div className="field">
-            <label>Premio</label>
+            <label>Premio al completar la tarjeta</label>
             <input className="input" value={c.rewardName} maxLength={80} onChange={(e) => patch({ rewardName: e.target.value })} />
           </div>
           <div className="field">
@@ -436,6 +442,60 @@ function Config({ data, onSaved, reload }: { data: ConfigData; onSaved: (d: Conf
             <input className="input" inputMode="numeric" value={c.validDays} onChange={(e) => patch({ validDays: Number(e.target.value.replace(/\D/g, "")) })} />
           </div>
         </div>
+
+        <h3 style={{ marginTop: 22 }}>Premios intermedios</h3>
+        <p className="hint" style={{ fontSize: 14, marginBottom: 12 }}>
+          Se ganan al llegar a cierta cantidad de sellos y la tarjeta sigue sumando hasta el premio final. Si ponés un porcentaje, al cobrar se descuenta solo del precio del servicio.
+        </p>
+        <div style={{ display: "grid", gap: 10 }}>
+          {c.milestones.map((m, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div className="field" style={{ width: 110 }}>
+                <label>A los (sellos)</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={m.at || ""}
+                  onChange={(e) => patch({ milestones: c.milestones.map((x, j) => (j === i ? { ...x, at: Number(e.target.value.replace(/\D/g, "")) } : x)) })}
+                />
+              </div>
+              <div className="field" style={{ flex: 1, minWidth: 180 }}>
+                <label>Premio</label>
+                <input
+                  className="input"
+                  value={m.name}
+                  maxLength={80}
+                  onChange={(e) => patch({ milestones: c.milestones.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })}
+                />
+              </div>
+              <div className="field" style={{ width: 120 }}>
+                <label>% de descuento</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={m.percent}
+                  onChange={(e) => patch({ milestones: c.milestones.map((x, j) => (j === i ? { ...x, percent: Math.min(100, Number(e.target.value.replace(/\D/g, ""))) } : x)) })}
+                />
+              </div>
+              <button type="button" className="btn danger sm" onClick={() => patch({ milestones: c.milestones.filter((_, j) => j !== i) })}>
+                Quitar
+              </button>
+            </div>
+          ))}
+        </div>
+        {c.milestones.length < 5 && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ marginTop: 12 }}
+            onClick={() => patch({ milestones: [...c.milestones, { at: Math.max(1, Math.floor(c.cutsRequired / 2)), name: "15% de descuento", percent: 15 }] })}
+          >
+            + Agregar premio intermedio
+          </button>
+        )}
+        <p className="hint" style={{ fontSize: 13, marginTop: 8 }}>
+          Los premios intermedios tienen que estar antes del último sello ({c.cutsRequired}); los que no cumplan se descartan al guardar.
+        </p>
 
         <h3 style={{ marginTop: 22 }}>Sellos por servicio</h3>
         <p className="hint" style={{ fontSize: 14, marginBottom: 12 }}>Por defecto cada servicio suma 1. Poné 0 para que no sume (ej. cejas) o 2 para que cuente doble.</p>

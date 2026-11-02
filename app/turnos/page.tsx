@@ -26,7 +26,7 @@ export default async function TurnosPage({
           maxDaysAhead={config.maxDaysAhead}
           today={nowAR().date}
           initialServiceId={active.find((s) => s.id === servicio)?.id}
-          loyalty={loyalty.enabled ? { cutsRequired: loyalty.cutsRequired, rewardName: loyalty.rewardName } : undefined}
+          loyalty={loyalty.enabled ? { cutsRequired: loyalty.cutsRequired, rewardName: loyalty.rewardName, milestones: loyalty.milestones } : undefined}
           shop={{
             name: config.name,
             address: `${config.address}, ${config.city}`,
