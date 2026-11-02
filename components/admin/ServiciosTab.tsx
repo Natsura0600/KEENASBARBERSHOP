@@ -27,7 +27,7 @@ export default function ServiciosTab() {
     try {
       const res = await api<{ services: Service[] }>("/api/admin/servicios", { method: "PUT", json: { services: list } });
       setList(res.services);
-      setMsg({ ok: true, text: "Guardado. Ya se ve en la web." });
+      setMsg({ ok: true, text: "Guardado. En la web se ve en unos segundos." });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Error" });
     } finally {

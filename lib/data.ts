@@ -20,10 +20,19 @@ export const newId = (prefix = "") => prefix + randomBytes(6).toString("hex");
 /* Config, servicios y avisos (la web pública tolera que no haya DB)    */
 /* ------------------------------------------------------------------ */
 
+export function configFrom(stored?: Partial<Config> | null): Config {
+  return { ...DEFAULT_CONFIG, ...(stored ?? {}), hours: { ...DEFAULT_CONFIG.hours, ...(stored?.hours ?? {}) } };
+}
+export const servicesFrom = (stored: unknown): Service[] => (Array.isArray(stored) ? (stored as Service[]) : DEFAULT_SERVICES);
+export const noticesFrom = (stored: unknown): Notice[] => (Array.isArray(stored) ? (stored as Notice[]) : DEFAULT_NOTICES);
+export function visibleNotices(list: Notice[]): Notice[] {
+  const today = nowAR().date;
+  return list.filter((n) => n.active && (!n.expiresOn || n.expiresOn >= today));
+}
+
 export async function getConfig(): Promise<Config> {
   try {
-    const stored = await getStoreOrNull()?.get<Partial<Config>>(keys.config);
-    return { ...DEFAULT_CONFIG, ...(stored ?? {}), hours: { ...DEFAULT_CONFIG.hours, ...(stored?.hours ?? {}) } };
+    return configFrom(await getStoreOrNull()?.get<Partial<Config>>(keys.config));
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -31,8 +40,7 @@ export async function getConfig(): Promise<Config> {
 
 export async function getServices(): Promise<Service[]> {
   try {
-    const stored = await getStoreOrNull()?.get<Service[]>(keys.services);
-    return Array.isArray(stored) ? stored : DEFAULT_SERVICES;
+    return servicesFrom(await getStoreOrNull()?.get<Service[]>(keys.services));
   } catch {
     return DEFAULT_SERVICES;
   }
@@ -41,14 +49,11 @@ export async function getServices(): Promise<Service[]> {
 export async function getNotices(onlyVisible = false): Promise<Notice[]> {
   let list = DEFAULT_NOTICES;
   try {
-    const stored = await getStoreOrNull()?.get<Notice[]>(keys.notices);
-    if (Array.isArray(stored)) list = stored;
+    list = noticesFrom(await getStoreOrNull()?.get<Notice[]>(keys.notices));
   } catch {
     /* usa los avisos por defecto */
   }
-  if (!onlyVisible) return list;
-  const today = nowAR().date;
-  return list.filter((n) => n.active && (!n.expiresOn || n.expiresOn >= today));
+  return onlyVisible ? visibleNotices(list) : list;
 }
 
 /* ------------------------------------------------------------------ */
@@ -81,12 +86,12 @@ export async function appointmentsOf(date: string): Promise<Appointment[]> {
 
 const BUSY: Appointment["status"][] = ["reserved", "done", "noshow"];
 
-export async function availability(config: Config, service: Service, date: string, forAdmin = false) {
+export async function availability(config: Config, service: Service, date: string, forAdmin = false, preloaded?: Appointment[]) {
   const all = daySlots(config, date);
   if (!all.length || !serviceAllowedOn(service, date)) return { closed: true, slots: [] as { time: string; free: boolean }[] };
 
   const taken = new Set<string>();
-  for (const a of await appointmentsOf(date)) {
+  for (const a of preloaded ?? (await appointmentsOf(date))) {
     if (BUSY.includes(a.status)) a.slots.forEach((s) => taken.add(s));
   }
   const need = slotsNeeded(service.duration, config.slotMinutes);

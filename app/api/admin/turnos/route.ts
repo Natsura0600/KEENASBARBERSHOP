@@ -24,6 +24,7 @@ import {
 } from "@/lib/loyalty";
 import { normalizePhone } from "@/lib/phone";
 import type { Appointment, AppointmentStatus, PayMethod } from "@/lib/types";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // el aviso por WhatsApp puede tardar unos segundos
@@ -37,16 +38,12 @@ export type AgendaCard = {
 export const GET = guard(async (req) => {
   const date = new URL(req.url).searchParams.get("date") ?? nowAR().date;
   if (!isValidDate(date)) return json({ error: "Fecha inválida" }, 400);
-  const [config, services, appointments, loyalty] = await Promise.all([
-    getConfig(),
-    getServices(),
-    appointmentsOf(date),
-    getLoyalty(),
-  ]);
+  const [site, appointments] = await Promise.all([getSite({ fresh: true }), appointmentsOf(date)]);
+  const { config, services, loyalty } = site;
   // Horarios libres por servicio, para cargar turnos a mano.
   const free: Record<string, string[]> = {};
   for (const s of services.filter((x) => x.active)) {
-    const av = await availability(config, s, date, true);
+    const av = await availability(config, s, date, true, appointments);
     free[s.id] = av.slots.filter((x) => x.free).map((x) => x.time);
   }
 

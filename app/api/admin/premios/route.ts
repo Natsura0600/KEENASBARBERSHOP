@@ -19,12 +19,14 @@ import {
 import { normalizePhone } from "@/lib/phone";
 import { getWaState } from "@/lib/wa-baileys";
 import { waStatus } from "@/lib/whatsapp";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // el aviso por WhatsApp puede tardar unos segundos
 
 export const GET = guard(async () => {
-  const [config, cfg, rewards, clients] = await Promise.all([getConfig(), getLoyalty(), listRewards(), listClients()]);
+  const [site, rewards, clients, wa] = await Promise.all([getSite({ fresh: true }), listRewards(), listClients(), getWaState()]);
+  const { config, loyalty: cfg } = site;
   const today = nowAR().date;
   const byPhone = new Map(clients.map((c) => [c.phone, c]));
   return json({
@@ -32,7 +34,7 @@ export const GET = guard(async () => {
     channel: cfg.channel,
     milestones: cfg.milestones,
     rewardName: cfg.rewardName,
-    linked: (await getWaState()).linked,
+    linked: wa.linked,
     autoSend: cfg.autoSend,
     rewards: rewards.map((r) => ({
       ...r,

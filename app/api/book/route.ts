@@ -10,6 +10,7 @@ import { allow, body, guard, json, str } from "@/lib/http";
 import { ensureClient, getLoyalty, setOptIn } from "@/lib/loyalty";
 import { normalizePhone } from "@/lib/phone";
 import { notifyAdmins } from "@/lib/push";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,8 @@ export const POST = guard(async (req) => {
   if (digits.length < 8 || digits.length > 15) return json({ error: "Revisá el teléfono." }, 400);
   if (!isValidDate(date) || !isValidTime(time)) return json({ error: "Fecha u hora inválida." }, 400);
 
-  const [config, services] = await Promise.all([getConfig(), getServices()]);
+  const site = await getSite();
+  const { config, services } = site;
   const service = services.find((s) => s.id === serviceId && s.active);
   if (!service) return json({ error: "Servicio inválido." }, 400);
 
@@ -47,7 +49,7 @@ export const POST = guard(async (req) => {
   // Tarjeta de fidelización: alta del cliente y consentimiento. Si algo falla acá, la reserva igual queda hecha.
   let card: { stamps: number; required: number; rewardName: string; milestones: { at: number; name: string; percent: number }[] } | undefined;
   try {
-    const loyalty = await getLoyalty();
+    const loyalty = site.loyalty;
     const canonical = normalizePhone(phone);
     if (loyalty.enabled && canonical) {
       const client = await ensureClient(canonical, name);

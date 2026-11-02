@@ -4,6 +4,8 @@ type SetOpts = { nx?: boolean; ex?: number };
 
 export interface Store {
   get<T>(key: string): Promise<T | null>;
+  /** Varias claves en un solo comando (Upstash lo cuenta como 1). */
+  mget(keys: string[]): Promise<unknown[]>;
   set(key: string, value: unknown, opts?: SetOpts): Promise<boolean>;
   del(...keys: string[]): Promise<void>;
   hget<T>(key: string, field: string): Promise<T | null>;
@@ -27,6 +29,9 @@ function upstashStore(redis: Redis): Store {
   return {
     async get<T>(key: string) {
       return (await redis.get<T>(key)) ?? null;
+    },
+    async mget(ks) {
+      return ks.length ? ((await redis.mget(...ks)) as unknown[]).map((v) => v ?? null) : [];
     },
     async set(key, value, opts) {
       const res = await redis.set(key, value as string, opts as never);
@@ -82,6 +87,12 @@ function memoryStore(): Store {
     async get<T>(key: string) {
       const e = alive(key);
       return e ? (clone(e.v) as T) : null;
+    },
+    async mget(ks) {
+      return ks.map((k) => {
+        const e = alive(k);
+        return e ? clone(e.v) : null;
+      });
     },
     async set(key, value, opts) {
       if (opts?.nx && alive(key)) return false;

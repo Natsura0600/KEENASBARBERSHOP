@@ -3,6 +3,7 @@ import { getStore, keys } from "@/lib/db";
 import { isValidTime, toMin } from "@/lib/dates";
 import { body, guard, json, str } from "@/lib/http";
 import type { Config, DayHours } from "@/lib/types";
+import { invalidateSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -46,5 +47,6 @@ export const PUT = guard(async (req) => {
     hours,
   };
   await getStore().set(keys.config, next);
+  invalidateSite();
   return json({ ok: true, config: next });
 }, { admin: true });

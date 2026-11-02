@@ -3,6 +3,7 @@ import { getStore, keys } from "@/lib/db";
 import { isValidDate } from "@/lib/dates";
 import { body, guard, json, str } from "@/lib/http";
 import type { Notice } from "@/lib/types";
+import { invalidateSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,6 @@ export const PUT = guard(async (req) => {
     });
   }
   await getStore().set(keys.notices, notices);
+  invalidateSite();
   return json({ ok: true, notices });
 }, { admin: true });

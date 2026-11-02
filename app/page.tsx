@@ -9,6 +9,7 @@ import { WORKS } from "@/lib/works";
 import { getConfig, getNotices, getServices } from "@/lib/data";
 import { DAYS_ES, nowAR } from "@/lib/dates";
 import { ORDER, ars, mapsLink, openStatus, waLink } from "@/lib/format";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ const REVIEWS = [
 const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default async function Home() {
-  const [config, allServices, notices, loyalty] = await Promise.all([getConfig(), getServices(), getNotices(true), getLoyalty()]);
+  const { config, services: allServices, visibleNotices: notices, loyalty } = await getSite();
   const services = allServices.filter((s) => s.active);
   const now = nowAR();
   const status = openStatus(config, now);

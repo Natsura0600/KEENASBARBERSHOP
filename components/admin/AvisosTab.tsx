@@ -26,7 +26,7 @@ export default function AvisosTab() {
     try {
       const res = await api<{ notices: Notice[] }>("/api/admin/avisos", { method: "PUT", json: { notices: list } });
       setList(res.notices);
-      setMsg({ ok: true, text: "Guardado. Los avisos activos ya se ven en la web." });
+      setMsg({ ok: true, text: "Guardado. Los avisos activos se ven en la web en unos segundos." });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Error" });
     } finally {

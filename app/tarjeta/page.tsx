@@ -4,12 +4,13 @@ import SiteNav from "@/components/SiteNav";
 import { getConfig } from "@/lib/data";
 import { getLoyalty } from "@/lib/loyalty";
 import { describeRewards } from "@/lib/loyalty-shared";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Tarjeta de fidelización" };
 
 export default async function TarjetaPage() {
-  const [config, loyalty] = await Promise.all([getConfig(), getLoyalty()]);
+  const { config, loyalty } = await getSite();
   return (
     <>
       <SiteNav config={config} minimal />

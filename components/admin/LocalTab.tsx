@@ -33,7 +33,7 @@ export default function LocalTab() {
     try {
       const res = await api<{ config: Config }>("/api/admin/config", { method: "PUT", json: c });
       setC(res.config);
-      setMsg({ ok: true, text: "Guardado. La web ya usa estos datos." });
+      setMsg({ ok: true, text: "Guardado. La web usa estos datos en unos segundos." });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Error" });
     } finally {

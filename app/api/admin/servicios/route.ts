@@ -2,6 +2,7 @@ import { getServices, newId } from "@/lib/data";
 import { getStore, keys } from "@/lib/db";
 import { body, guard, json, money, str } from "@/lib/http";
 import type { Service } from "@/lib/types";
+import { invalidateSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -39,5 +40,6 @@ export const PUT = guard(async (req) => {
     });
   }
   await getStore().set(keys.services, services);
+  invalidateSite();
   return json({ ok: true, services });
 }, { admin: true });

@@ -2,6 +2,7 @@ import { nowAR } from "@/lib/dates";
 import { allow, body, guard, json, str } from "@/lib/http";
 import { effectiveStatus, getClient, getLoyalty, listRewards } from "@/lib/loyalty";
 import { normalizePhone } from "@/lib/phone";
+import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const POST = guard(async (req) => {
   if (!(await allow("tarjeta", req, 12, 60 * 60))) {
     return json({ error: "Demasiadas consultas. Probá de nuevo en un rato." }, 429);
   }
-  const cfg = await getLoyalty();
+  const cfg = (await getSite()).loyalty;
   if (!cfg.enabled) return json({ enabled: false });
 
   const b = await body(req);
