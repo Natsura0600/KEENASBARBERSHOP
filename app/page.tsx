@@ -201,7 +201,7 @@ export default async function Home() {
             <ol className="steps">
               {[
                 ["Elegí qué te hacés", "Corte, barba, ceja o el combo completo. Ves el precio antes de seguir."],
-                ["Agarrá tu horario", "Los días y horarios libres se muestran al instante. Lo que ves, está disponible."],
+                ["Reserva tu horario", "Los días y horarios libres se muestran al instante. Lo que ves, está disponible."],
                 ["Dejá tus datos y listo", "Nombre y teléfono. Te queda el turno confirmado en pantalla y lo sumás al calendario."],
               ].map(([t, d], i) => (
                 <li key={t} className="reveal" style={{ ["--d" as string]: `${i * 0.1}s` }}>
